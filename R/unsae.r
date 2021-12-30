@@ -75,6 +75,8 @@ multilevel_EM <-
   a_i_vec <- ranef(mod_glmer)[[random_effect]][,1]
   a_i.init_vec <- a_i_vec
 
+  M <- length(a_i_vec)
+
   area_index_long <- data[[random_effect]]
   area_index_unique <- unique(area_index_long)
 
@@ -103,6 +105,11 @@ multilevel_EM <-
 
   x <- model.matrix(as.formula(fixed_form), data = data)
   y <- data[[response_var]]
+
+  if (length(unique(y))!= 2 ){stop("too many values in response")}
+  if (!is.numeric(y)) {y <- factor(y) }
+  if (is.factor(y)) {y <- as.numeric(y == levels(factor(y))[1]) }
+
   pred_part <- str_squish(str_split(fixed_form, "\\~", simplify = TRUE)[2])
 
   # Setting up the inital params
