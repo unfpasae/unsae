@@ -184,7 +184,7 @@ multilevel_EM <-
         # eta is a linear predictor with xb + a, a = area ranef, a ~ N(0, sigma2a_t)
         eta <- x_beta1 + a_i.old %>% as.numeric # E(a_i | a_i_hat...) = a_i hat assuming normal
         y.hat_i <- hc(eta)
-        h.prime_eta_i <- y.hat_i * (1 - y.hat_i)
+        h.prime_eta_i <- ifelse(near(y.hat * (1 - y.hat), 0), 1e-4, y.hat * (1 - y.hat))
         z_i <- (y_i - y.hat_i) / h.prime_eta_i
         a_i.new <- a_i.old + lm(z_i ~ 1, weights = h.prime_eta_i)$coef %>% as.numeric # WLS regression
 
