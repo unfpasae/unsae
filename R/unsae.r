@@ -297,7 +297,8 @@ predict_em <- function(em_output, test_set){
   yhat <- covariate_pred(em_output, test_set)
   spat_hat <- spatial_pred(em_output, test_set)
   combined_hat <- yhat + spat_hat
-  return(combined_hat)
+  phat <- hc(combined_hat)
+  return(phat)
 }
 
 
