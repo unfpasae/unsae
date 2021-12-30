@@ -81,7 +81,6 @@ multilevel_EM <-
 
   M <- length(a_i_vec)
 
-
   area_index_long <- data$area_index
   area_index_unique <- unique(area_index_long)
 
@@ -114,6 +113,9 @@ multilevel_EM <-
   if (length(unique(y))!= 2 ){stop("too many values in response")}
   if (!is.numeric(y)) {y <- factor(y) }
   if (is.factor(y)) {y <- as.numeric(y == levels(factor(y))[1]) }
+
+  # this will be used in the m = 1, .. M loop
+  data$y <- y
 
   pred_part <- str_squish(str_split(fixed_form, "\\~", simplify = TRUE)[2])
 
