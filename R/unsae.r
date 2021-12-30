@@ -64,185 +64,144 @@ spatial_lik <- function(par, D, Y, mu) {
 
 multilevel_EM <-
   function(formula, data, tol = 1e-3, coordinates){
-  re_pattern <- "\\|(.*?)\\)"
-  random_effect <- str_squish(str_match(formula, re_pattern)[,2])
-
-  # create a col named "area_index" for convenience
-  if (!is.factor(data[[random_effect]])){stop("area index must be a factor")}
-  data$area_index <- droplevels(data[[random_effect]]) %>%
-    as.numeric
-  M <- data$area_index %>%
-    unique %>% length
-
-
-  # initial fit using glmer
-  mod_glmer <- lme4::glmer(formula = as.formula(formula), data = data, family = "binomial")
-
-  beta_1_t <- mod_glmer@beta
-  sigma2.a_t <- as.numeric(VarCorr(mod_glmer)[1]) # estimated variance of area ranef
-  a_i_vec <- ranef(mod_glmer)[[random_effect]][,1]
-  a_i.init_vec <- a_i_vec
-
-  M <- length(a_i_vec)
-
-  area_index_long <- data$area_index
-  area_index_unique <- unique(area_index_long)
-
-  a_i_ini_tbl <- tibble(a_i =  a_i_vec, area_index = area_index_unique)
-  a_i_long_tbl <- tibble(area_index = area_index_long)
-  a_i_tbl <- left_join(a_i_long_tbl, a_i_ini_tbl, by = "area_index")
-
-  re_form_pattern <- "\\((.*?)\\)"
-  re_part_form <- str_match(formula, re_form_pattern)[1]
-  fe_form <-
-    str_remove_all(string = formula, pattern = coll(re_part_form)) %>%
-    # coll is to force the matching the "full expression", not as a regex
-    str_remove_all(pattern = "\\)") %>%
-    str_remove_all(pattern = "\\(") %>%
-    str_remove_all(pattern = "\\|") %>%
-    str_squish()
-
-  error_pattern <- "\\~(.*?)\\+"
-  fixed_form <-
-  ifelse(str_ends(string = fe_form, pattern = "\\+"),
-         str_sub(string = fe_form, start = 1L, end = (str_length(fe_form)-1)),
-         str_replace(string = fe_form, pattern = error_pattern, replace = "~")) %>%
-    str_squish()
-
-  response_var <- str_squish(str_split(fixed_form, "\\~", simplify = TRUE)[1])
-
-  x <- model.matrix(as.formula(fixed_form), data = data)
-  y <- data[[response_var]]
-
-  if (length(unique(y))!= 2 ){stop("too many values in response")}
-  if (!is.numeric(y)) {y <- factor(y) }
-  if (is.factor(y)) {y <- as.numeric(y == levels(factor(y))[1]) }
-
-  # this will be used in the m = 1, .. M loop
-  data$y <- y
-
-  pred_part <- str_squish(str_split(fixed_form, "\\~", simplify = TRUE)[2])
-
-  # Setting up the inital params
-  theta1.init <- rep(0, ncol(x))
-  # here should be the current value of X beta_t + E(a_i| ...)
-  a_i.old_vec_long <- rep(0, length(y))
-  change <- Inf
-  beta1.old <- theta1.init
-  a_i.old_vec <- a_i.init_vec
-
-  outer_change <- Inf
-  a_i.old_vec <- rep(0, M)
-  cnt <- 0
-
-  # initialize
-  mu_hat <- 0
-  tau2_hat <- 1
-  params <- c(0.2, 2)
-
-  while (outer_change > tol & cnt <= 20){
-    # M step in f1
-
+    re_pattern <- "\\|(.*?)\\)"
+    random_effect <- str_squish(str_match(formula, re_pattern)[,
+                                                               2])
+    if (!is.factor(data[[random_effect]])) {
+      stop("area index must be a factor")
+    }
+    data$area_index <- droplevels(data[[random_effect]]) %>%
+      as.numeric
+    M <- data$area_index %>% unique %>% length
+    mod_glmer <- lme4::glmer(formula = as.formula(formula), data = data,
+                             family = "binomial")
+    beta_1_t <- mod_glmer@beta
+    sigma2.a_t <- as.numeric(VarCorr(mod_glmer)[1])
+    a_i_vec <- ranef(mod_glmer)[[random_effect]][, 1]
+    a_i.init_vec <- a_i_vec
+    M <- length(a_i_vec)
+    area_index_long <- data$area_index
+    area_index_unique <- unique(area_index_long)
+    a_i_ini_tbl <- tibble(a_i = a_i_vec, area_index = area_index_unique)
+    a_i_long_tbl <- tibble(area_index = area_index_long)
+    a_i_tbl <- left_join(a_i_long_tbl, a_i_ini_tbl, by = "area_index")
+    re_form_pattern <- "\\((.*?)\\)"
+    re_part_form <- str_match(formula, re_form_pattern)[1]
+    fe_form <- str_remove_all(string = formula, pattern = coll(re_part_form)) %>%
+      str_remove_all(pattern = "\\)") %>% str_remove_all(pattern = "\\(") %>%
+      str_remove_all(pattern = "\\|") %>% str_squish()
+    error_pattern <- "\\~(.*?)\\+"
+    fixed_form <- ifelse(str_ends(string = fe_form, pattern = "\\+"),
+                         str_sub(string = fe_form, start = 1L, end = (str_length(fe_form) -
+                                                                        1)), str_replace(string = fe_form, pattern = error_pattern,
+                                                                                         replace = "~")) %>% str_squish()
+    response_var <- str_squish(str_split(fixed_form, "\\~",
+                                         simplify = TRUE)[1])
+    x <- model.matrix(as.formula(fixed_form), data = data)
+    y <- data[[response_var]]
+    if (length(unique(y)) != 2) {
+      stop("too many values in response")
+    }
+    if (!is.numeric(y)) {
+      y <- factor(y)
+    }
+    if (is.factor(y)) {
+      y <- as.numeric(y == levels(factor(y))[1])
+    }
+    data$y <- y
+    pred_part <- str_squish(str_split(fixed_form, "\\~",
+                                      simplify = TRUE)[2])
+    beta1.init <- rep(0, ncol(x))
+    a_i.old_vec_long <- rep(0, length(y))
     change <- Inf
-    while(change > tol  ) { # M step for Q1 using IRWLS
-      x_beta1 <- x %*% beta1.old %>% as.numeric
-      # eta is a linear predictor with xb + a, a = area ranef, a ~ N(0, sigma2a_t)
-      eta <- x_beta1 + a_i.old_vec_long # E(a_i | a_i_hat...) = a_i hat assuming normal
-      y.hat <- hc(eta)
-      h.prime_eta <- ifelse(near(y.hat * (1 - y.hat), 0), 1e-5, y.hat * (1 - y.hat))
-      z <- (y - y.hat) / h.prime_eta
-      temp_tbl <- data
-      temp_tbl$z <- z
-      wls_form <- paste("z~", pred_part)
-      beta1.new <- beta1.old + lm(formula = as.formula(wls_form), weights = h.prime_eta, data = data)$coef  # WLS regression
-      change <- sqrt(sum((beta1.new - beta1.old)^2))
-      beta1.old <- beta1.new
-      # cat(change, "\n")
-      # M step associated with Q1 function
-    } # at the end of this while loop, x_beta1[t+1] is obtained
-
-    beta_1.t <- beta1.old
-    wk_tbl <- data %>% rename(a_index = area_index)
-    wk_tbl$w_resid <- y - x %*% beta_1.t %>% as.numeric # working residual
-    wk_tbl <- wk_tbl %>% mutate(pi_w = 1 - hc(w_resid))
-
-
-    # M step in f2
-    a_i.new_vec <- rep(NA, length(a_i.old_vec))
-    v_i_vec <- rep(NA, length(a_i.old_vec))
-
-    for (m in 1:M){
-      wk_tbl_i <- wk_tbl %>% filter(a_index == m) # for m-th area
-
-      x_i <- model.matrix(as.formula(fixed_form), data = wk_tbl_i) # model matrix for m-th area
-      y_i <- wk_tbl_i$y # response for m-th area
-
-      a_i.old <- a_i.old_vec[m]
+    beta1.old <- beta1.init
+    a_i.old_vec <- a_i.init_vec
+    outer_change <- Inf
+    a_i.old_vec <- rep(0, M)
+    cnt <- 0
+    mu_hat <- 0
+    tau2_hat <- 1
+    params <- c(0.2, 2)
+    while (outer_change > tol & cnt <= 20) {
       change <- Inf
-      while(change > tol) { # M step for Q1 using IRLS
-        x_beta1 <- x_i %*% beta1.old
-        # eta is a linear predictor with xb + a, a = area ranef, a ~ N(0, sigma2a_t)
-        eta <- x_beta1 + a_i.old %>% as.numeric # E(a_i | a_i_hat...) = a_i hat assuming normal
-        y.hat_i <- hc(eta)
-        h.prime_eta_i <- ifelse(near(y.hat_i * (1 - y.hat_i), 0), 1e-5, y.hat_i * (1 - y.hat_i))
-        z_i <- (y_i - y.hat_i) / h.prime_eta_i
-        a_i.new <- a_i.old + lm(z_i ~ 1, weights = h.prime_eta_i)$coef %>% as.numeric # WLS regression
-
-
-        change <- sqrt(sum((a_i.new - a_i.old)^2))
-        a_i.old <- a_i.new
-        # cat(change, "\n")
-        # M step associated with Q1 function
-      } # at the end of this while loop, a_i[t+1] is obtained
-      a_i.new_vec[m] <- a_i.old
-      v_i_vec[m] <- 1/sum(h.prime_eta_i)
+      while (change > tol) {
+        x_beta1 <- x %*% beta1.old %>% as.numeric
+        eta <- x_beta1 + a_i.old_vec_long
+        y.hat <- hc(eta)
+        h.prime_eta <- ifelse(near(y.hat * (1 - y.hat), 0),
+                              1e-04, y.hat * (1 - y.hat))
+        z <- (y - y.hat)/h.prime_eta
+        temp_tbl <- data
+        temp_tbl$z <- z
+        wls_form <- paste("z~", pred_part)
+        beta1.new <- beta1.old + lm(formula = as.formula(wls_form),
+                                    weights = h.prime_eta, data = data)$coef
+        change <- sqrt(sum((beta1.new - beta1.old)^2))
+        beta1.old <- beta1.new
+      }
+      beta_1.t <- beta1.old
+      wk_tbl <- data %>% rename(a_index = area_index)
+      wk_tbl$w_resid <- y - x %*% beta_1.t %>% as.numeric
+      wk_tbl <- wk_tbl %>% mutate(pi_w = 1 - hc(w_resid))
+      a_i.new_vec <- rep(NA, length(a_i.old_vec))
+      v_i_vec <- rep(NA, length(a_i.old_vec))
+      for (m in 1:M) {
+        wk_tbl_i <- wk_tbl %>% filter(a_index == m)
+        x_i <- model.matrix(as.formula(fixed_form), data = wk_tbl_i)
+        y_i <- wk_tbl_i$y
+        a_i.old <- a_i.old_vec[m]
+        change <- Inf
+        inner_cnt <- 0
+        while (change > tol & inner_cnt <= 100) {
+          x_beta1 <- x_i %*% beta1.old
+          eta <- x_beta1 + a_i.old %>% as.numeric
+          y.hat_i <- hc(eta)
+          h.prime_eta_i <- ifelse(near(y.hat_i * (1 - y.hat_i),
+                                       0), 1e-04, y.hat_i * (1 - y.hat_i))
+          z_i <- (y_i - y.hat_i)/h.prime_eta_i
+          a_i.new <- a_i.old + lm(z_i ~ 1, weights = h.prime_eta_i)$coef %>%
+            as.numeric
+          change <- sqrt(sum((a_i.new - a_i.old)^2))
+          a_i.old <- a_i.new
+          inner_cnt <- inner_cnt + 1
+        }
+        a_i.new_vec[m] <- a_i.old
+        v_i_vec[m] <- 1/sum(h.prime_eta_i)
+      }
+      V <- diag(v_i_vec)
+      sigma_area_t <- mean(a_i.new_vec^2)
+      spat_coord <- data %>% dplyr::select(all_of(coordinates)) %>%
+        unique
+      D <- plgp::distance(spat_coord)
+      K <- exp(-D/params[1]) + diag(params[2], nrow(spat_coord))
+      Ki <- solve(K)
+      mu_hat <- drop(t(rep(1, nrow(Ki))) %*% Ki %*% a_i.new_vec/sum(Ki))
+      a_star <- drop(mu_hat + solve(tau2_hat * K + V) %*% (tau2_hat *
+                                                             K) %*% (a_i.new_vec - mu_hat))
+      V_star <- tau2_hat * K - tau2_hat * K %*% solve(tau2_hat *
+                                                        K + V) %*% (tau2_hat * K)
+      tau2_hat <- drop(sum(diag(solve(tau2_hat * K) %*% V_star)) +
+                         t(a_star) %*% solve(tau2_hat * K) %*% a_star)/nrow(K)
+      out <- optim(c(0.1, 0.01), spatial_lik, method = "L-BFGS-B",
+                   lower = 1e-07, upper = c(10, 10), D = D, Y = a_star,
+                   mu = mu_hat)
+      params <- out$par
+      a_i_ini_tbl_new <- tibble(a_i = a_star, area_index = unique(data$area_index))
+      a_i_long_tbl_new <- tibble(area_index = data$area_index)
+      a_i_tbl_new <- left_join(a_i_long_tbl_new, a_i_ini_tbl_new,
+                               by = "area_index")
+      a_i.old_vec_long <- a_i_tbl_new$a_i
+      outer_change <- mean((a_star - a_i.old_vec)^2)
+      plot(a_i.old_vec, a_star)
+      a_i.old_vec <- a_star
+      cnt <- cnt + 1
+      cat(cnt, "\n")
     }
 
-    V <- diag(v_i_vec)
-
-    sigma_area_t <- mean(a_i.new_vec^2)
-
-    spat_coord <- data %>%
-      dplyr::select(all_of(coordinates)) %>%
-      unique
-
-    D <- plgp::distance(spat_coord)
-    K <- exp(- D/params[1]) + diag(params[2], nrow(spat_coord))
-    Ki <- solve(K)
-    mu_hat <- drop(t(rep(1, nrow(Ki))) %*% Ki %*% a_i.new_vec / sum(Ki))
-
-    a_star <- drop(mu_hat + solve(tau2_hat*K + V) %*% (tau2_hat*K) %*% (a_i.new_vec-mu_hat))
-    V_star <- tau2_hat*K - tau2_hat*K %*% solve(tau2_hat*K + V) %*% (tau2_hat*K)
-
-    tau2_hat <- drop(sum(diag( solve(tau2_hat*K) %*% V_star )) + t(a_star) %*% solve(tau2_hat*K) %*% a_star)/nrow(K)
-
-    out <- optim(c(0.1, 0.01), spatial_lik, method="L-BFGS-B", lower=1e-7,
-                 upper = c(10, 10), D = D, Y = a_star, mu = mu_hat)
-
-    params <- out$par
-    a_i_ini_tbl_new <- tibble(a_i =  a_star, area_index = unique(data$area_index))
-    a_i_long_tbl_new <- tibble(area_index = data$area_index)
-    a_i_tbl_new <- left_join(a_i_long_tbl_new, a_i_ini_tbl_new, by = "area_index")
-
-    a_i.old_vec_long <- a_i_tbl_new$a_i
-    outer_change <- mean((a_star-a_i.old_vec)^2)
-    a_i.old_vec <- a_star
-
-
-    cnt <- cnt + 1
-    #cat(mean(abs(a_i.new_vec)), "\n")
-    #cat(outer_change, "\n")
-    #cat(cnt, "\n")
-
-  }
-
-  outcome <- list(cnt = cnt, area_tbl = a_i_tbl_new, area_re = a_i.old_vec,
-                  params = c(out$par), mu_hat = mu_hat,
-                  spat_coord = spat_coord,
-                  fomula = formula,
-                  V = v_i_vec, beta_hat = beta1.new,
-                  tau2_hat = tau2_hat, D = D,
-                  coordinates = coordinates)
+    outcome <- list(cnt = cnt, area_tbl = a_i_tbl_new, area_re = a_i.old_vec,
+                    params = c(out$par), mu_hat = mu_hat, spat_coord = spat_coord,
+                    fomula = formula, V = v_i_vec, beta_hat = beta1.new,
+                    tau2_hat = tau2_hat, D = D, coordinates = coordinates)
   return(outcome)
 }
 
