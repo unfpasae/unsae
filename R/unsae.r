@@ -208,7 +208,6 @@ multilevel_EM <-
 
     a_i.old_vec_long <- a_i_tbl_new$a_i
     outer_change <- mean((a_star-a_i.old_vec)^2)
-    plot(a_star, area_re)
     a_i.old_vec <- a_star
 
 
