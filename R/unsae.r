@@ -68,7 +68,10 @@ multilevel_EM <-
   random_effect <- str_squish(str_match(formula, re_pattern)[,2])
 
   # create a col named "area_index" for convenience
-  data$area_index <- data[[random_effect]]
+  if (!is.factor(data[[random_effect]])){stop("area index must be a factor")}
+  data$area_index <- droplevels(data[[random_effect]])
+  M <- data$area_index %>%
+    unique %>% length
 
 
   # initial fit using glmer
