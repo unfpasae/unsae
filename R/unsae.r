@@ -67,6 +67,10 @@ multilevel_EM <-
   re_pattern <- "\\|(.*?)\\)"
   random_effect <- str_squish(str_match(formula, re_pattern)[,2])
 
+  # create a col named "area_index" for convenience
+  data$area_index <- data[[random_effect]]
+
+
   # initial fit using glmer
   mod_glmer <- lme4::glmer(formula = as.formula(formula), data = data, family = "binomial")
 
@@ -77,7 +81,8 @@ multilevel_EM <-
 
   M <- length(a_i_vec)
 
-  area_index_long <- data[[random_effect]]
+
+  area_index_long <- data$area_index
   area_index_unique <- unique(area_index_long)
 
   a_i_ini_tbl <- tibble(a_i =  a_i_vec, area_index = area_index_unique)
