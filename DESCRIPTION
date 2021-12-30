@@ -1,0 +1,11 @@
+Package: unsae
+Type: Package
+Title: Small Area Estimation with unit model and spatial process
+Version: 0.1.0
+Author: Youngdeok Hwang <youngdeok.hwang@baruch.cuny.edu> and Jae-Kwang Kim <jkim@iastate.edu>
+Maintainer: Youngdeok Hwang <youngdeok.hwang@baruch.cuny.edu>
+Description: It does calculate unit model logistic regression with EM algorithm. 
+License: License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.1.2
