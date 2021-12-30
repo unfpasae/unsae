@@ -69,7 +69,8 @@ multilevel_EM <-
 
   # create a col named "area_index" for convenience
   if (!is.factor(data[[random_effect]])){stop("area index must be a factor")}
-  data$area_index <- droplevels(data[[random_effect]])
+  data$area_index <- droplevels(data[[random_effect]]) %>%
+    as.numeric
   M <- data$area_index %>%
     unique %>% length
 
