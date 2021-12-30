@@ -222,6 +222,7 @@ multilevel_EM <-
 
 spatial_pred <- function(em_output, test_set){
   coordinates <- em_output$coordinates
+  spat_coord <- em_output$spat_coord
   new_site <- test_set %>% dplyr::select(all_of(coordinates))
   if (is.null(nrow(new_site))){ # to make sure it works for a single site
     new_site <- as.data.frame(matrix(new_site, nrow = 1))
