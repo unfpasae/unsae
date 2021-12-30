@@ -196,7 +196,7 @@ multilevel_EM <-
                                by = "area_index")
       a_i.old_vec_long <- a_i_tbl_new$a_i
       outer_change <- mean((a_star - a_i.old_vec)^2)
-      plot(a_i.old_vec, a_star)
+      # plot(a_i.old_vec, a_star)
       a_i.old_vec <- a_star
       cnt <- cnt + 1
       cat(cnt, "\n")
