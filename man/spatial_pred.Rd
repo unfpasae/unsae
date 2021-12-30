@@ -2,7 +2,7 @@
 % Please edit documentation in R/unsae.r
 \name{spatial_pred}
 \alias{spatial_pred}
-\title{to calculate the spatial random effect for a new data set.}
+\title{spatial prediction}
 \usage{
 spatial_pred(em_output, test_set)
 }

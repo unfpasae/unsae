@@ -2,8 +2,7 @@
 % Please edit documentation in R/unsae.r
 \name{spatial_lik}
 \alias{spatial_lik}
-\title{a simple spatial likelihood
-used within multilevel_EM function of \code{\link{unsae}}}
+\title{spatial likelihood}
 \usage{
 spatial_lik(par, D, Y, mu)
 }
@@ -20,6 +19,6 @@ spatial_lik(par, D, Y, mu)
 negative log likelihood
 }
 \description{
-a simple spatial likelihood
+a simple (log) spatial likelihood
 used within multilevel_EM function of \code{\link{unsae}}
 }

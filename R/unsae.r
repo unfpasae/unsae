@@ -1,3 +1,5 @@
+#' inverse canonical link
+#'
 #' a simple function for inverse canonical link
 #'
 #' calculate the inverse canonical link \code{\link{unsae}}
@@ -12,7 +14,10 @@
 #' @export
 hc <- function(x) as.numeric(1 /(1 + exp(-x))) # inverse canonical link
 
-#' a simple spatial likelihood
+
+#' spatial likelihood
+#'
+#' a simple (log) spatial likelihood
 #' used within multilevel_EM function of \code{\link{unsae}}
 #'
 #' @param par parameter values
@@ -40,6 +45,8 @@ spatial_lik <- function(par, D, Y, mu) {
   return(-ll)
 }
 
+#' multilevel EM
+#'
 #' a main function to fit multilevel em with gaussian spatial correlation. Some chunk of the code has been dedicated to handle the syntax. glmer function is called to get the initial value of the estimates.
 #'
 #' @param formula formula argument following the glmer syntax.
@@ -207,8 +214,8 @@ multilevel_EM <-
 
     cnt <- cnt + 1
     #cat(mean(abs(a_i.new_vec)), "\n")
-    cat(outer_change, "\n")
-    cat(cnt, "\n")
+    #cat(outer_change, "\n")
+    #cat(cnt, "\n")
 
   }
 
@@ -222,6 +229,8 @@ multilevel_EM <-
   return(outcome)
 }
 
+#' spatial prediction
+#'
 #' to calculate the spatial random effect for a new data set.
 #'
 #' @param em_output the outcome from the multilevel_EM function.
@@ -252,6 +261,9 @@ spatial_pred <- function(em_output, test_set){
   return(a_hat)
 }
 
+
+#' covariate prediction
+#'
 #' to calculate the spatial random effect for a new data set.
 #'
 #' @param em_output the outcome from the multilevel_EM function.
@@ -287,7 +299,9 @@ covariate_pred <- function(em_output, test_set){
   return(out)
 }
 
-#' to calculate the spatial random effect for a new data set.
+#' main prediction
+#'
+#' a wrapper to calculate the spatial random effect for a new data set.
 #'
 #' @param em_output the outcome from the multilevel_EM function.
 #'

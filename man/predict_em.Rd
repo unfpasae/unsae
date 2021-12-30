@@ -2,7 +2,7 @@
 % Please edit documentation in R/unsae.r
 \name{predict_em}
 \alias{predict_em}
-\title{to calculate the spatial random effect for a new data set.}
+\title{main prediction}
 \usage{
 predict_em(em_output, test_set)
 }
@@ -15,5 +15,5 @@ predict_em(em_output, test_set)
 predicted outcome combining covariates parts Xb and spatial random effects at new data set
 }
 \description{
-to calculate the spatial random effect for a new data set.
+a wrapper to calculate the spatial random effect for a new data set.
 }

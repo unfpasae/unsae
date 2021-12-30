@@ -2,7 +2,7 @@
 % Please edit documentation in R/unsae.r
 \name{multilevel_EM}
 \alias{multilevel_EM}
-\title{a main function to fit multilevel em with gaussian spatial correlation. Some chunk of the code has been dedicated to handle the syntax. glmer function is called to get the initial value of the estimates.}
+\title{multilevel EM}
 \usage{
 multilevel_EM(formula, data, tol = 0.001, coordinates)
 }

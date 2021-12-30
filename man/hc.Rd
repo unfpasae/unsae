@@ -2,7 +2,7 @@
 % Please edit documentation in R/unsae.r
 \name{hc}
 \alias{hc}
-\title{a simple function for inverse canonical link}
+\title{inverse canonical link}
 \usage{
 hc(x)
 }
@@ -13,6 +13,9 @@ hc(x)
 calculated value
 }
 \description{
+a simple function for inverse canonical link
+}
+\details{
 calculate the inverse canonical link \code{\link{unsae}}
 }
 \examples{

@@ -2,7 +2,7 @@
 % Please edit documentation in R/unsae.r
 \name{covariate_pred}
 \alias{covariate_pred}
-\title{to calculate the spatial random effect for a new data set.}
+\title{covariate prediction}
 \usage{
 covariate_pred(em_output, test_set)
 }
