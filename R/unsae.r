@@ -149,7 +149,7 @@ multilevel_EM <-
         wk_tbl_i <- wk_tbl %>% filter(a_index == m)
         x_i <- model.matrix(as.formula(fixed_form), data = wk_tbl_i)
         y_i <- wk_tbl_i$y
-        a_i.old <- a_i.old_vec[m]
+        if (length(unique(y_i))>1){a_i.old <- a_i.old_vec[m]
         change <- Inf
         inner_cnt <- 0
         while (change > tol & inner_cnt <= 100) {
@@ -164,12 +164,16 @@ multilevel_EM <-
           change <- sqrt(sum((a_i.new - a_i.old)^2))
           a_i.old <- a_i.new
           inner_cnt <- inner_cnt + 1
+          a_i.new_vec[m] <- a_i.old
+          v_i_vec[m] <- 1/sum(h.prime_eta_i)
         }
-        a_i.new_vec[m] <- a_i.old
-        v_i_vec[m] <- 1/sum(h.prime_eta_i)
+        }else{
+          a_i.new_vec[m] <- a_i.old
+          v_i_vec[m] <- 1e6
+        }
       }
       V <- diag(v_i_vec)
-      sigma_area_t <- mean(a_i.new_vec^2)
+
       spat_coord <- data %>% dplyr::select(all_of(coordinates)) %>%
         unique
       D <- plgp::distance(spat_coord)
@@ -202,6 +206,7 @@ multilevel_EM <-
                     params = c(out$par), mu_hat = mu_hat, spat_coord = spat_coord,
                     fomula = formula, V = v_i_vec, beta_hat = beta1.new,
                     tau2_hat = tau2_hat, D = D, coordinates = coordinates)
+
   return(outcome)
 }
 
