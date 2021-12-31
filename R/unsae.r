@@ -106,7 +106,7 @@ multilevel_EM <-
       y <- factor(y)
     }
     if (is.factor(y)) {
-      y <- as.numeric(y == levels(factor(y))[1])
+      y <- as.numeric(y == levels(factor(y))[2])
     }
     data$y <- y
     pred_part <- str_squish(str_split(fixed_form, "\\~",
