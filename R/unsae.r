@@ -1,3 +1,5 @@
+#' @import plgp
+# '
 #' inverse canonical link
 #'
 #' a simple function for inverse canonical link
