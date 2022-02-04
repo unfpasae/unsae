@@ -1,4 +1,4 @@
-#' @import plgp
+#' @importFrom plgp randomForest lme4
 # '
 #' inverse canonical link
 #'
