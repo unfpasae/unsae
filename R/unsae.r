@@ -32,7 +32,7 @@ hc <- function(x) as.numeric(1 /(1 + exp(-x))) # inverse canonical link
 #'
 #' @return negative log likelihood
 #'
-spatial_lik <- function(par, D, Y, mu, Va) {
+spatial_lik <- function(par, D, Y, mu) {
   # par: parameters (range and nugget)
   # D: coordinates
   # Y: responses
@@ -40,7 +40,7 @@ spatial_lik <- function(par, D, Y, mu, Va) {
   theta <- par[1]
   g <- par[2]
   n <- length(Y)
-  K <- exp(-D/theta) + g*Va
+  K <- exp(-D/theta) + g*diag(n)
   K_inv <- solve(K)
   ldetK <- determinant(K, logarithm=TRUE)$modulus
   ll <- -(n/2)*log(t(Y - mu) %*% K_inv %*% Y - mu) - (1/2)*ldetK
@@ -190,7 +190,7 @@ multilevel_EM <-
                          t(a_star) %*% solve(tau2_hat * K) %*% a_star)/nrow(K)
       out <- optim(c(0.1, 0.01), spatial_lik, method = "L-BFGS-B",
                    lower = 1e-07, upper = c(10, 10), D = D, Y = a_star,
-                   mu = mu_hat, V = V/tau2_hat)
+                   mu = mu_hat)
       params <- out$par
       a_i_ini_tbl_new <- tibble(a_i = a_star, area_index = unique(data$area_index))
       a_i_long_tbl_new <- tibble(area_index = data$area_index)
