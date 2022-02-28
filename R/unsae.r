@@ -304,5 +304,51 @@ predict_em <- function(em_output, test_set){
 }
 
 
+#' spatial random effect
+#'
+#' to calculate the spatial random effect for a new data set.
+#'
+#' @param em_output the outcome from the multilevel_EM function.
+#'
+#' @param test_set the test set (or new data set). The data set *should* have the predictor columns as well as the coordinate columns, all with the same names with the training data set.
+#'
+#' @return simulated spatial random effect of size 100 (100 is default) at new data set
+#'
+#'
+
+spatial_re <- function(em_output, test_set, size = 100){
+  coordinates <- em_output$coordinates
+  spat_coord <- em_output$spat_coord
+  tau2_hat <- em_output$tau2_hat
+  new_site <- test_set %>% dplyr::select(all_of(coordinates))
+  if (is.null(nrow(new_site))){ # to make sure it works for a single site
+    new_site <- as.data.frame(matrix(new_site, nrow = 1))
+  }
+  par <- em_output$params
+  DXX <- plgp::distance(new_site)
+  D <-  em_output$D
+  mu_hat <- em_output$mu_hat
+  a_star <- em_output$area_re
+  K <- exp(- D/par[1]) + par[2]*diag(nrow(spat_coord))
+  spat_coord <- em_output$spat_coord
+  KXX <- exp(-DXX/par[1]) + par[2]*diag(ncol(DXX))
+  DX <- plgp::distance(new_site, spat_coord)
+  KX <- exp(-DX/par[1])
+  Ki <- solve(K)
+  a_hat <- mu_hat + KX %*% Ki %*% (a_star - mu_hat)
+  a_hat <- drop(a_hat)
+
+  Sigmap <- tau2hat*(KXX - KX %*% Ki %*% t(KX))
+
+  DXX <- plgp::distance(new_site)
+  KXX <- exp(-DXX/par[1]) + diag(par[2], nrow(DXX))
+
+  Sigmap <- tau2hat*(KXX - KX %*% Ki %*% t(KX))
+
+  Sigma.int <- tau2hat*(exp(-DXX) + diag(par[2], nrow(DXX))
+                        - KX %*% Ki %*% t(KX))
+  a_k <- rmvnorm(size, a_hat, Sigma.int)
+  return(a_k)
+}
 
 
