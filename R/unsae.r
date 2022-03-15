@@ -201,7 +201,7 @@ multilevel_EM <-
       # plot(a_i.old_vec, a_star)
       a_i.old_vec <- a_star
       cnt <- cnt + 1
-      cat(cnt, "\n")
+      cat("...EM iteration:", cnt, "\n")
     }
 
     outcome <- list(cnt = cnt, area_tbl = a_i_tbl_new, area_re = a_i.old_vec,
@@ -338,14 +338,14 @@ spatial_re <- function(em_output, test_set, size = 100){
   a_hat <- mu_hat + KX %*% Ki %*% (a_star - mu_hat)
   a_hat <- drop(a_hat)
 
-  Sigmap <- tau2hat*(KXX - KX %*% Ki %*% t(KX))
+  Sigmap <- tau2_hat*(KXX - KX %*% Ki %*% t(KX))
 
   DXX <- plgp::distance(new_site)
   KXX <- exp(-DXX/par[1]) + diag(par[2], nrow(DXX))
 
-  Sigmap <- tau2hat*(KXX - KX %*% Ki %*% t(KX))
+  Sigmap <- tau2_hat*(KXX - KX %*% Ki %*% t(KX))
 
-  Sigma.int <- tau2hat*(exp(-DXX) + diag(par[2], nrow(DXX))
+  Sigma.int <- tau2_hat*(exp(-DXX) + diag(par[2], nrow(DXX))
                         - KX %*% Ki %*% t(KX))
   a_k <- rmvnorm(size, a_hat, Sigma.int)
   return(a_k)
