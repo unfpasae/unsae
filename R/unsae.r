@@ -310,9 +310,13 @@ predict_em <- function(em_output, test_set){
 #'
 #' @param em_output the outcome from the multilevel_EM function.
 #'
-#' @param test_set the test set (or new data set). The data set *should* have the predictor columns as well as the coordinate columns, all with the same names with the training data set.
+#' @param test_set the test set (or new data set).
+#' The data set *should* have the predictor columns as well
+#' as the coordinate columns,
+#' all with the same names with the training data set.
 #'
-#' @return simulated spatial random effect of size 100 (100 is default) at new data set
+#' @return simulated spatial random effect of size 100 (100 is default)
+#' at new data set
 #'
 #'
 
@@ -348,7 +352,15 @@ spatial_re <- function(em_output, test_set, size = 100){
   Sigma.int <- tau2_hat*(exp(-DXX) + diag(par[2], nrow(DXX))
                         - KX %*% Ki %*% t(KX))
   a_k <- rmvnorm(size, a_hat, Sigma.int)
-  return(a_k)
+
+  # routine to calculate the MSE part 1
+  yhat <- covariate_pred(em_output, test_set)
+  rep_yhat_mat <- matrix(rep(yhat, size), nrow = size, byrow = TRUE)
+  combined_mat <- a_k + rep_yhat_mat
+
+  var_comp_2 <- apply(1 / (1 + exp(-combined_mat)), 2, var)
+
+  return(var_comp_2)
 }
 
 
