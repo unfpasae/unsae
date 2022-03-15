@@ -358,9 +358,9 @@ spatial_re <- function(em_output, test_set, size = 100){
   rep_yhat_mat <- matrix(rep(yhat, size), nrow = size, byrow = TRUE)
   combined_mat <- a_k + rep_yhat_mat
 
-  var_comp_2 <- apply(1 / (1 + exp(-combined_mat)), 2, var)
+  p_i_k_hat <- apply(1 / (1 + exp(-combined_mat)), 1, mean)
 
-  return(var_comp_2)
+  return(p_i_k_hat)
 }
 
 
