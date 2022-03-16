@@ -304,9 +304,8 @@ predict_em <- function(em_output, test_set){
 }
 
 
-#' spatial random effect
-#'
-#' to calculate the spatial random effect for a new data set.
+
+#' calculate the MSE for each area
 #'
 #' @param em_output the outcome from the multilevel_EM function.
 #'
@@ -320,7 +319,7 @@ predict_em <- function(em_output, test_set){
 #'
 #'
 
-spatial_re <- function(em_output, test_set, size = 100){
+cal_mse <- function(em_output, test_set, size = 100){
   coordinates <- em_output$coordinates
   spat_coord <- em_output$spat_coord
   tau2_hat <- em_output$tau2_hat
@@ -358,9 +357,12 @@ spatial_re <- function(em_output, test_set, size = 100){
   rep_yhat_mat <- matrix(rep(yhat, size), nrow = size, byrow = TRUE)
   combined_mat <- a_k + rep_yhat_mat
 
-  p_i_k_hat <- apply(1 / (1 + exp(-combined_mat)), 1, mean)
+  v_2 <- var(apply(1 / (1 + exp(-combined_mat)), 2, mean))
+  v_1 <- var(apply(1 / (1 + exp(-combined_mat)), 1, mean)) / ncol(combined_mat)
 
-  return(p_i_k_hat)
+  total_v <- v_1 + v_2
+
+  return(total_v)
 }
 
 
