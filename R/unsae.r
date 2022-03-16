@@ -357,8 +357,8 @@ cal_mse <- function(em_output, test_set, size = 100){
   rep_yhat_mat <- matrix(rep(yhat, size), nrow = size, byrow = TRUE)
   combined_mat <- a_k + rep_yhat_mat
 
-  v_2 <- var(apply(1 / (1 + exp(-combined_mat)), 2, mean))
-  v_1 <- var(apply(1 / (1 + exp(-combined_mat)), 1, mean)) / ncol(combined_mat)
+  v_2 <- var((apply(1 / (1 + exp(-combined_mat)), 1, mean)))
+  v_1 <- var(apply(1 / (1 + exp(-combined_mat)), 2, mean)) / ncol(combined_mat)
 
   total_v <- v_1 + v_2
 
