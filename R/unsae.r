@@ -305,7 +305,8 @@ predict_em <- function(em_output, test_set){
 
 
 
-#' calculate the MSE for each area
+#' simulate the spatial random effects for pixel within each area
+#' internal wrapper
 #'
 #' @param em_output the outcome from the multilevel_EM function.
 #'
@@ -314,12 +315,12 @@ predict_em <- function(em_output, test_set){
 #' as the coordinate columns,
 #' all with the same names with the training data set.
 #'
-#' @return simulated spatial random effect of size 100 (100 is default)
+#' @size number of simulated spatial random effect of size 100 (100 is default)
 #' at new data set
 #'
 #'
-
-cal_mse <- function(em_output, test_set, size = 100){
+#'
+simulate_p <- function(em_output, test_set, size = 100){
   coordinates <- em_output$coordinates
   spat_coord <- em_output$spat_coord
   tau2_hat <- em_output$tau2_hat
@@ -327,13 +328,14 @@ cal_mse <- function(em_output, test_set, size = 100){
   if (is.null(nrow(new_site))){ # to make sure it works for a single site
     new_site <- as.data.frame(matrix(new_site, nrow = 1))
   }
+
   par <- em_output$params
   DXX <- plgp::distance(new_site)
   D <-  em_output$D
   mu_hat <- em_output$mu_hat
   a_star <- em_output$area_re
   K <- exp(- D/par[1]) + par[2]*diag(nrow(spat_coord))
-  spat_coord <- em_output$spat_coord
+
   KXX <- exp(-DXX/par[1]) + par[2]*diag(ncol(DXX))
   DX <- plgp::distance(new_site, spat_coord)
   KX <- exp(-DX/par[1])
@@ -348,8 +350,12 @@ cal_mse <- function(em_output, test_set, size = 100){
 
   Sigmap <- tau2_hat*(KXX - KX %*% Ki %*% t(KX))
 
-  Sigma.int <- tau2_hat*(exp(-DXX) + diag(par[2], nrow(DXX))
-                        - KX %*% Ki %*% t(KX))
+  Sigma.int <- tau2_hat*(exp(-DXX) + diag(par[2], nrow(DXX))  - (KX %*% Ki %*% t(KX)))
+
+  ## to ensure A = LL'; really awful fix but does the job.. for now.
+  S <- svd(Sigma.int)
+  Sigma.int <- S$u %*% diag(S$d) %*% t(S$u) # enforce the symmetry
+
   a_k <- rmvnorm(size, a_hat, Sigma.int)
 
   # routine to calculate the MSE part 1
@@ -357,12 +363,88 @@ cal_mse <- function(em_output, test_set, size = 100){
   rep_yhat_mat <- matrix(rep(yhat, size), nrow = size, byrow = TRUE)
   combined_mat <- a_k + rep_yhat_mat
 
-  v_2 <- var((apply(1 / (1 + exp(-combined_mat)), 1, mean)))
-  v_1 <- var(apply(1 / (1 + exp(-combined_mat)), 2, mean)) / ncol(combined_mat)
+  simulated_p <- 1 / (1 + exp(-combined_mat))
 
-  total_v <- v_1 + v_2
-
-  return(total_v)
+  return(simulated_p)
 }
 
 
+#' get the small area estimates for each area
+#'
+#' @param em_output the outcome from the multilevel_EM function.
+#'
+#' @param level_2_geom the area shapefile-simple feature
+#'#'
+#' @param coord_info coordinates for each DHS survey -- must be indexed by column
+#' named DHSCLUST
+#'
+#' @param frac how much cluster we want to choose.
+#'
+#' @param resampling resampling rate.
+#'
+#' @counter to track the computation progression -- logical; TRUE or FALSE
+#'
+#'
+#'
+
+produce_m_v_sae <- function(em_output, level_2_geom, coord_info,
+                            frac = 0.1, resampling = 0.3, counter = FALSE){
+  output <- level_2_geom
+
+  cluster_coord <- coord_info %>% select(-DHSCLUST)
+
+  output$m <- NA
+  output$v <- NA
+
+  grid_list <- list()
+  for (admin_id in 1:nrow(level_2_geom)){
+
+    gr_admin_id <- level_2_geom[admin_id,] %>%
+      st_make_grid(n = c(7, 7), what = "centers") %>%     # get the box shape grid of 7 by 7
+      st_intersection(level_2_geom[admin_id,]) # get the part intersects with the admin area
+
+    # it stores in grid_list
+    grid_list[[admin_id]] <- gr_admin_id
+    grid_coord_admin_id <- st_coordinates(gr_admin_id)
+
+    # coordinates should be converted to a matrix; em model only takes the matrix
+    grid_coord_admin_id <- as_tibble(grid_coord_admin_id[,1:2])
+    names(grid_coord_admin_id) <- names(em_output$spat_coord)
+
+    # prediction for each grid point within the small area
+
+    predicted_list <- list()
+    simulated_out <- list()
+    for (c_i in 1:nrow(grid_coord_admin_id)){
+      current_point <- matrix(grid_coord_admin_id[c_i,], ncol = 2)
+      names(current_point) <- names(em_output$spat_coord)
+      cluster_dist_temp <- coord_info
+      cluster_dist_temp$p_rank <-
+        rdist(as.matrix(cluster_coord), current_point) %>% percent_rank()
+
+      # we choose the points that belong to nearest 10%
+      chosen_coord <- cluster_dist_temp %>% filter(p_rank <= frac)
+
+      # now we choose the survey portion
+      chosen_tbl <- valid_set_with_sp %>% filter(DHSCLUST %in% chosen_coord$DHSCLUST)
+
+      # resampling
+      temp_tbl <- chosen_tbl %>% sample_frac(resampling)
+      # prediction
+      predicted_list[[c_i]] <- predict_em(em_output, test_set = temp_tbl)
+      simulated_out[[c_i]] <- simulate_p(em_output, test_set = temp_tbl, size = 100)
+    }
+
+    point_mean <- sapply(simulated_out, mean)
+    v1 <- var(point_mean) / length(point_mean)
+    v2 <- sapply(sapply(simulated_out, function(x) apply(x, 2, mean), simplify = FALSE), var)
+
+    # mean estimates and MSE
+    output$m[admin_id] <- do.call("c", predicted_list) %>% mean
+    output$v[admin_id] <- v1 + mean(v2)
+
+    if (counter & admin_id%%5==0) cat("---", admin_id, "th area /", nrow(level_2_geom), " -- \n")
+  }
+
+  return(output)
+}
