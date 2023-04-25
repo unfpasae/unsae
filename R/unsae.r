@@ -33,6 +33,7 @@ hc <- function(x) as.numeric(1 /(1 + exp(-x))) # inverse canonical link
 #' @return negative log likelihood
 #'
 spatial_lik <- function(par, D, Y, mu) {
+  ## from Gramacy (2020)
   # par: parameters (range and nugget)
   # D: coordinates
   # Y: responses
@@ -43,8 +44,8 @@ spatial_lik <- function(par, D, Y, mu) {
   K <- exp(-D/theta) + g*diag(n)
   K_inv <- solve(K)
   ldetK <- determinant(K, logarithm=TRUE)$modulus
-  ll <- -(n/2)*log(t(Y - mu) %*% K_inv %*% Y - mu) - (1/2)*ldetK
-  return(-ll)
+  loglik <- -(n/2)*log(t(Y - mu) %*% K_inv %*% Y - mu) - (1/2)*ldetK
+  return(-loglik)
 }
 
 #' multilevel EM
@@ -180,8 +181,8 @@ multilevel_EM <-
         unique
       D <- plgp::distance(spat_coord)
       K <- exp(-D/params[1]) + diag(params[2], nrow(spat_coord))
-      Ki <- solve(K)
-      mu_hat <- drop(t(rep(1, nrow(Ki))) %*% Ki %*% a_i.new_vec/sum(Ki))
+      K_inv <- solve(K)
+      mu_hat <- drop(t(rep(1, nrow(K_inv))) %*% K_inv %*% a_i.new_vec/sum(K_inv))
       a_star <- drop(mu_hat + solve(tau2_hat * K + V) %*% (tau2_hat *
                                                              K) %*% (a_i.new_vec - mu_hat))
       V_star <- tau2_hat * K - tau2_hat * K %*% solve(tau2_hat *
@@ -230,17 +231,17 @@ spatial_pred <- function(em_output, test_set){
     new_site <- as.data.frame(matrix(new_site, nrow = 1))
   }
   par <- em_output$params
-  DXX <- plgp::distance(new_site)
+  D_new <- plgp::distance(new_site)
   D <-  em_output$D
   mu_hat <- em_output$mu_hat
   a_star <- em_output$area_re
   K <- exp(- D/par[1]) + par[2]*diag(nrow(spat_coord))
   spat_coord <- em_output$spat_coord
-  KXX <- exp(-DXX/par[1]) + par[2]*diag(ncol(DXX))
-  DX <- plgp::distance(new_site, spat_coord)
-  KX <- exp(-DX/par[1])
-  Ki <- solve(K)
-  a_hat <- mu_hat + KX %*% Ki %*% (a_star - mu_hat)
+  K_new <- exp(-D_new/par[1]) + par[2]*diag(ncol(D_new))
+  D_new_train <- plgp::distance(new_site, spat_coord)
+  K_new_train <- exp(-D_new_train/par[1])
+  K_inv <- solve(K)
+  a_hat <- mu_hat + K_new_train %*% K_inv %*% (a_star - mu_hat)
   a_hat <- drop(a_hat)
   return(a_hat)
 }
@@ -330,29 +331,29 @@ simulate_p <- function(em_output, test_set, size = 100){
   }
 
   par <- em_output$params
-  DXX <- plgp::distance(new_site)
+  D_new <- plgp::distance(new_site)
   D <-  em_output$D
   mu_hat <- em_output$mu_hat
   a_star <- em_output$area_re
   K <- exp(- D/par[1]) + par[2]*diag(nrow(spat_coord))
 
-  KXX <- exp(-DXX/par[1]) + par[2]*diag(ncol(DXX))
-  DX <- plgp::distance(new_site, spat_coord)
-  KX <- exp(-DX/par[1])
-  Ki <- solve(K)
-  a_hat <- mu_hat + KX %*% Ki %*% (a_star - mu_hat)
+  K_new <- exp(-D_new/par[1]) + par[2]*diag(ncol(D_new))
+  D_new_train <- plgp::distance(new_site, spat_coord)
+  K_new_train <- exp(-D_new_train/par[1])
+  K_inv <- solve(K)
+  a_hat <- mu_hat + K_new_train %*% K_inv %*% (a_star - mu_hat)
   a_hat <- drop(a_hat)
 
-  Sigmap <- tau2_hat*(KXX - KX %*% Ki %*% t(KX))
+  Sigmap <- tau2_hat*(K_new - K_new_train %*% K_inv %*% t(K_new_train))
 
-  DXX <- plgp::distance(new_site)
-  KXX <- exp(-DXX/par[1]) + diag(par[2], nrow(DXX))
+  D_new <- plgp::distance(new_site)
+  K_new <- exp(-D_new/par[1]) + diag(par[2], nrow(D_new))
 
-  Sigmap <- tau2_hat*(KXX - KX %*% Ki %*% t(KX))
+  Sigmap <- tau2_hat*(K_new - K_new_train %*% K_inv %*% t(K_new_train))
 
-  Sigma.int <- tau2_hat*(exp(-DXX) + diag(par[2], nrow(DXX))  - (KX %*% Ki %*% t(KX)))
+  Sigma.int <- tau2_hat*(exp(-D_new) + diag(par[2], nrow(D_new))  - (K_new_train %*% K_inv %*% t(K_new_train)))
 
-  ## to ensure A = LL'; really awful fix but does the job.. for now.
+  ## to ensure A = LL'; not an ideal fix but does the job..
   S <- svd(Sigma.int)
   Sigma.int <- S$u %*% diag(S$d) %*% t(S$u) # enforce the symmetry
 
